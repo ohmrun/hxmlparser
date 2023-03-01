@@ -193,7 +193,7 @@ abstract Hxml (Array<HxmlArgument>) to Array<HxmlArgument> {
   public static inline function getVersion(v:String):Version {
     if(v.startsWith('git:')) {
       var ci = v.indexOf('#');
-      if(ci == null) return Git(v.substring('git:'.length));
+      if(ci == -1) return Git(v.substring('git:'.length));
       else return Git(v.substring('git:'.length, ci), v.substring(ci+1));
     }
     return Haxelib(v);
@@ -279,9 +279,7 @@ abstract Hxml (Array<HxmlArgument>) to Array<HxmlArgument> {
       switch this[i] {
         case Cwd(_):
           this.push(ClassPath(path));
-          break;
-        case ClassPath(_path) if(_path == path):
-          break;
+        default : 
       }
       i--;
     }
@@ -303,13 +301,12 @@ abstract Hxml (Array<HxmlArgument>) to Array<HxmlArgument> {
       switch this[i] {
         case Cwd(_):
           this.push(Cmd(command));
-          break;
-        case Cmd(_command) if(_command == command):
-          break;
+        default : 
       }
       i--;
     }
-    if(i == 0) this.push(ClassPath(path));
+    //TODO what is this for
+    //if(i == 0) this.push(ClassPath(path));
   }
   public inline function removeCmd(command:String) this.delete(f -> switch(f) {
     case Cmd(_command) if(_command == command): true;
@@ -388,20 +385,17 @@ abstract Hxml (Array<HxmlArgument>) to Array<HxmlArgument> {
       switch(this[i]) {
         case Cwd(_cwd):
           this[i] = Path.isAbsolute(cwd) ? Cwd(cwd) : Cwd(Path.join([_cwd, cwd]));
-          break;
         case e if(HxmlArgumentTools.isCwdBased(e)):
           i--;
           while(i >= 0) {
             switch(this[i]) {
               case Cwd(_cwd):
                 if(_cwd != cwd) this.push(Cwd(cwd));
-                break;
               default:
             }
             i--; 
           }
           if(i == 0) this.push(Cwd(cwd));
-          break;
         default:
       }
       i--; 
@@ -638,10 +632,15 @@ abstract Hxml (Array<HxmlArgument>) to Array<HxmlArgument> {
     case Macro(code): Some(code);
     default: null;
   });
-  public inline function addMacro(code:String) if(!this.exists(f -> switch(f) {
-    case Macro(_code) if(_code == code): true;
-    default: false;
-  })) this.push(Cmd(code));
+  public inline function addMacro(code:String) {
+    if(!this.exists(f -> switch(f) {
+      case Macro(_code) if(_code == code): true;
+      default: false;
+    })){
+      this.push(Macro(code));  
+    }   
+  }
+
   public inline function removeMacro(code:String) this.delete(f -> switch(f) {
     case Macro(_code) if(_code == code): true;
     default: false;
@@ -1196,5 +1195,8 @@ abstract Hxml (Array<HxmlArgument>) to Array<HxmlArgument> {
 
   public inline function delete(f:HxmlArgument -> Bool, onlyFirst:Bool = false) {
     CollectionTools.delete(this, f, onlyFirst);
+  }
+  public function prj():Array<HxmlArgument>{
+    return this;
   }
 }
